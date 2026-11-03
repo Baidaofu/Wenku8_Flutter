@@ -21,6 +21,8 @@ internal class Wenku8Bridge(context: Context, private val postToMain: (Runnable)
     private val io = Executors.newFixedThreadPool(4)
     private val accounts = Executors.newSingleThreadExecutor()
     private val imageIo = Executors.newSingleThreadExecutor()
+    /** Website renders block on a browser check and own their own thread. */
+    private val browse = Executors.newSingleThreadExecutor()
     private val publicGateway = WenkuPublicGateway(context)
     private val store = AccountSessionStore(context)
     private val webStore = AccountSessionStore(context, "web")
@@ -57,8 +59,18 @@ internal class Wenku8Bridge(context: Context, private val postToMain: (Runnable)
             return
         }
         val account = call.method in setOf("accountRequest", "login", "hasSession", "clearSession", "webLogin", "publicationPage", "websiteStatus", "websiteSelect", "websiteProbe", "websiteKeepAlive", "websiteRanking", "websiteBrowserLogin")
+        // A browser render can wait a minute for the site's check to settle. It
+        // must not run on the single account thread, or every later account call
+        // queues behind it and the page stops responding.
+        val browsing = call.method in setOf("publicationPage", "websiteProbe", "websiteRanking")
         val queuedRevision = sessionRevision
-        (if (account) accounts else if (call.method in setOf("illustration", "clearIllustrations", "accountAvatar")) imageIo else io).execute {
+        val target = when {
+            browsing -> browse
+            account -> accounts
+            call.method in setOf("illustration", "clearIllustrations", "accountAvatar") -> imageIo
+            else -> io
+        }
+        target.execute {
             try {
                 if (account && !sessionLoaded) {
                     sessionCookie = store.read()?.let { ApiSessionCookies.fromStored(it) }
@@ -419,5 +431,6 @@ internal class Wenku8Bridge(context: Context, private val postToMain: (Runnable)
         io.shutdown()
         accounts.shutdown()
         imageIo.shutdown()
+        browse.shutdown()
     }
 }

@@ -40,6 +40,8 @@ internal class WebsiteBrowser(
 
     private val main = Handler(Looper.getMainLooper())
     @Volatile private var view: WebView? = null
+    /** Pending teardown of the window-attached view. */
+    private var idle: Runnable? = null
 
     /** Cookies the WebView holds, or null when nothing was stored. */
     fun cookies(): String? {
@@ -71,15 +73,39 @@ internal class WebsiteBrowser(
     fun fetch(url: String, timeoutMillis: Long = 25_000): String {
         require(url.startsWith("https://www.wenku8.")) { "Unsupported website address" }
         Log.d(TAG, "fetch $url")
-        val origin = originOf(url)
-        if (!url.startsWith(origin) || url.length <= origin.length) {
-            return navigate(url, timeoutMillis)
+        // A view parked in the window is only needed while a page is loading;
+        // keeping it around between requests would leave a full-screen view in
+        // the hierarchy for the whole session.
+        idle?.let { main.removeCallbacks(it) }
+        try {
+            val origin = originOf(url)
+            if (!url.startsWith(origin) || url.length <= origin.length) {
+                return navigate(url, timeoutMillis)
+            }
+            // Every navigation is challenged, but a request issued from inside a
+            // page that already passed the check is not. Land on the root once,
+            // then read the deep link with the page's own fetch().
+            navigate(origin, timeoutMillis)
+            return fetchInPage(url, timeoutMillis * 2)
+        } finally {
+            scheduleRelease()
         }
-        // Every navigation is challenged, but a request issued from inside a
-        // page that already passed the check is not. Land on the root once, then
-        // read the deep link with the page's own fetch().
-        navigate(origin, timeoutMillis)
-        return fetchInPage(url, timeoutMillis * 2)
+    }
+
+    /** Tear the window-attached view down shortly after the last request. */
+    private fun scheduleRelease() {
+        val task = Runnable {
+            main.post {
+                view?.let { web ->
+                    detach(web)
+                    web.destroy()
+                }
+                view = null
+                idle = null
+            }
+        }
+        idle = task
+        main.postDelayed(task, 3_000)
     }
 
     /** Read [url] from inside the loaded document, same origin as the site. */
@@ -311,10 +337,10 @@ internal class WebsiteBrowser(
         if (web.parent != null) return
         try {
             // The check renders a widget that needs a real viewport, and
-            // Chromium throttles any view it believes is hidden or fully
-            // occluded -- which is exactly what a WebView behind the Flutter
-            // surface is. It therefore sits on top at a near-zero alpha, so the
-            // aggregate visibility stays true while the page remains unseen.
+            // Chromium throttles any view it believes is hidden or detached, so
+            // the view has to live in the window. Everything about it is tuned
+            // so it can never take input away from the app: it sits under the
+            // Flutter surface, it is nearly transparent, and it refuses touches.
             val full = android.view.ViewGroup.LayoutParams.MATCH_PARENT
             val params = if (root is android.widget.FrameLayout) {
                 android.widget.FrameLayout.LayoutParams(full, full)
@@ -324,7 +350,9 @@ internal class WebsiteBrowser(
             web.alpha = 0.01f
             web.isClickable = false
             web.isFocusable = false
-            root.addView(web, params)
+            web.isFocusableInTouchMode = false
+            web.setOnTouchListener { _, _ -> true }
+            root.addView(web, 0, params)
             Log.d(TAG, "attached shown=${web.isShown()} winVis=${web.windowVisibility}")
         } catch (_: Exception) {
             // Detached rendering still works, just slower; the timeout covers it.

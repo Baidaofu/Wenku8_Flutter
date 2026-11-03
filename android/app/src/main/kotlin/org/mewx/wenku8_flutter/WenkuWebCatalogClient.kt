@@ -71,24 +71,38 @@ internal class WenkuWebCatalogClient(
     fun page(library: Int, page: Int, cookies: ApiSessionCookies?): Page {
         require(library in 1..10000 && page in 1..100000)
         val url = URL(origin, "modules/article/articlelist.php?class=$library&sort=lastupdate&page=$page")
-        return rendered(url) ?: run {
-            if (cookies == null) throw WebCatalogFailure("WEB_LOGIN_REQUIRED", "请先登录文库账号")
-            request(url, cookies)
-        }
+        val session = cookies ?: ApiSessionCookies.empty()
+        return attempt(url, session) ?: rendered(url)
+            ?: throw WebCatalogFailure("WEB_LOGIN_REQUIRED", "请先登录文库账号")
     }
 
-    /** Prefer the browser renderer; a null answer falls back to plain HTTP. */
+    /**
+     * A browser render parks a view in the activity window, so it is only worth
+     * doing once plain HTTP has actually been refused. A challenged or empty
+     * answer is the only case that needs it.
+     */
     private fun rendered(url: URL): Page? {
         val reader = render ?: return null
         val html = try {
             reader(url.toString())
-        } catch (failure: WebCatalogFailure) {
-            throw failure
         } catch (_: Exception) {
             return null
         }
         return Page(html, ApiSessionCookies.empty())
     }
+
+    /** A plain request, or null when the site answered with a challenge. */
+    private fun attempt(url: URL, cookies: ApiSessionCookies): Page? = try {
+        request(url, cookies).takeUnless { challenged(it.html) }
+    } catch (_: WebCatalogFailure) {
+        null
+    }
+
+    private fun challenged(html: String): Boolean =
+        html.isBlank() ||
+            html.contains("Just a moment") ||
+            html.contains("cf-browser-verification") ||
+            html.contains("Enable JavaScript and cookies to continue")
 
     /**
      * A ranking board shared by every account: the site sorts these itself, so
@@ -104,7 +118,8 @@ internal class WenkuWebCatalogClient(
             "modules/article/toplist.php?sort=$sort&page=$page&charset=gbk"
         }
         val url = URL(origin, query)
-        return rendered(url) ?: request(url, cookies ?: ApiSessionCookies.empty())
+        val session = cookies ?: ApiSessionCookies.empty()
+        return attempt(url, session) ?: rendered(url) ?: request(url, session)
     }
 
     private fun request(start: URL, initial: ApiSessionCookies, form: String? = null): Page {
