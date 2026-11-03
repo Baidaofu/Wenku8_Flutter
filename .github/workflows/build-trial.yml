@@ -2,7 +2,7 @@ name: Build trial (APK arm64 + unsigned IPA)
 
 on:
   push:
-    branches: ['master', 'trial']
+    branches: ['master', 'trial', 'online']
   workflow_dispatch:
 
 permissions:
