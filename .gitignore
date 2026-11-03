@@ -108,8 +108,13 @@ fabric.properties
 
 # Machine paths and signing credentials
 # Online implementation files and binaries are outside the public project.
-/android/app/src/main/jniLibs/**/libcpp.so
-/android/app/src/main/java/org/mewx/wenku8/api/
+# This fork ships them: the private runtime is taken from the published
+# installation package and the online layer is ported back in.
+!/android/app/src/main/jniLibs/arm64-v8a/libcpp.so
+!/android/app/src/main/jniLibs/armeabi-v7a/libcpp.so
+!/android/app/src/main/jniLibs/x86_64/libcpp.so
+!/android/app/src/main/java/org/mewx/wenku8/api/
+!/android/app/src/main/java/org/mewx/wenku8/api/TokenManager.java
 /tools/content-gateway/
 key.properties
 *.keystore
@@ -167,6 +172,9 @@ key.properties
 *.cer
 *.csr
 *.so
+!android/app/src/main/jniLibs/arm64-v8a/libcpp.so
+!android/app/src/main/jniLibs/armeabi-v7a/libcpp.so
+!android/app/src/main/jniLibs/x86_64/libcpp.so
 !android/gradlew
 !android/gradlew.bat
 !android/gradle/wrapper/gradle-wrapper.jar
