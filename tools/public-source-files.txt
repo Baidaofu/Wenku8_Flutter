@@ -1,4 +1,5 @@
 .githooks/pre-push
+.github/workflows/build-trial.yml
 .github/workflows/flutter-ci.yml
 .github/workflows/project-pages.yml
 .github/workflows/sign-distribution.yml
@@ -9,14 +10,6 @@ NOTICE
 README.md
 README_EN.md
 README_ZH.md
-site/content.json
-site/activity.css
-site/activity.mjs
-site/README.md
-site/template.html
-site/site.css
-tools/build_project_site.py
-tools/fetch_activity_snapshot.py
 WenkuBookEngine.podspec
 analysis_options.yaml
 android/.gitignore
@@ -752,6 +745,12 @@ scripts/sync_reading_widget_seasons.py
 shaders/analytic_glass.frag
 shaders/continuous_blur.frag
 shaders/glass_shape.glsl
+site/README.md
+site/activity.css
+site/activity.mjs
+site/content.json
+site/site.css
+site/template.html
 third_party/JUNIVERSALCHARDET.md
 third_party/juniversalchardet-2.0.4/.github/workflows/maven.yml
 third_party/juniversalchardet-2.0.4/.gitignore
@@ -993,8 +992,10 @@ third_party/liquid_glass_easy/lib/src/widgets/utils/liquid_glass_spring.dart
 third_party/liquid_glass_easy/lib/src/widgets/utils/liquid_glass_touch.dart
 third_party/liquid_glass_easy/lib/src/widgets/utils/liquid_glass_warm_up.dart
 third_party/liquid_glass_easy/pubspec.yaml
+tools/build_project_site.py
 tools/check_public_source.py
 tools/export_public_source.py
+tools/fetch_activity_snapshot.py
 tools/prepare_release.py
 tools/public-source-files.txt
 tools/sign_distribution.py
