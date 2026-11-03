@@ -1,9 +1,31 @@
+import 'package:xml/xml.dart';
+
 import 'catalog.dart';
 
 class PublicationLibrary {
   const PublicationLibrary(this.id, this.name);
   final int id;
   final String name;
+
+  /// The API relay answers the category list as an XML `<metadata>` document;
+  /// the ids it carries are the ones the website calls `sort`.
+  static List<PublicationLibrary> parse(String source) {
+    final root = XmlDocument.parse(source).rootElement;
+    if (root.name.local != 'metadata') {
+      throw const FormatException('文库分类格式有误');
+    }
+    final seen = <int>{};
+    final libraries = <PublicationLibrary>[];
+    for (final item in root.findElements('item')) {
+      final id = int.tryParse(item.getAttribute('sort') ?? '');
+      final name = item.innerText.trim();
+      if (id != null && id > 0 && name.isNotEmpty && seen.add(id)) {
+        libraries.add(PublicationLibrary(id, name));
+      }
+    }
+    if (libraries.isEmpty) throw const FormatException('没有读到有效文库分类');
+    return List.unmodifiable(libraries);
+  }
 }
 
 abstract interface class PublicationCatalog {

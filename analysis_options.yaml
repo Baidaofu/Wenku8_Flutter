@@ -14,6 +14,8 @@ analyzer:
     - build/**
     # Analyzed with the Harmony Flutter SDK, which supplies OhosView.
     - platforms/harmony/harmony_gallery_save_button.dart
+    - android/**
+    - ios/**
 
 linter:
   # The lint rules applied to this project can be customized in the

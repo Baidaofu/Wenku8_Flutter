@@ -123,6 +123,7 @@ import 'ui_notifiers.dart';
 import 'route_identity.dart';
 import 'feature_pages.dart';
 import 'wenku_features.dart';
+import 'web_publication_catalog.dart' show WebPublicationCatalog;
 import 'legacy_import_page.dart';
 import 'legacy_transport.dart';
 import 'review_pages.dart';
@@ -154,6 +155,7 @@ class HomeShellState extends State<HomeShell> with TickerProviderStateMixin {
   late List<int> _visibleTabs;
   final _visitedTabs = <int>{};
   bool _catalogStarted = false;
+  bool _rankingAttached = false;
   static final _scrollPlatforms = TargetPlatform.values.toSet();
   late final _tabScrolls = [
     for (var i = 0; i < _dockItems.length; i++)
@@ -331,12 +333,24 @@ class HomeShellState extends State<HomeShell> with TickerProviderStateMixin {
 
   void _ensureCatalog() {
     if (_tab != 0 || !_visibleTabs.contains(0)) return;
+    _attachRanking();
     if (!_catalogStarted) {
       _catalogStarted = true;
       _catalog.loadInitial();
     } else if (_catalog.items.isEmpty && _catalog.error != null) {
       _catalog.retry();
     }
+  }
+
+  /// Discovery boards come from the official site, so hand the feed the
+  /// signed-in website session once the features scope is available.
+  void _attachRanking() {
+    if (!mounted || _rankingAttached) return;
+    final features = WenkuFeaturesScope.maybeOf(context);
+    final publications = features?.publications;
+    if (publications is! WebPublicationCatalog) return;
+    _rankingAttached = true;
+    _catalog.attachRankingCatalog(publications);
   }
 
   void _blockedTagsChanged() {

@@ -2,6 +2,8 @@ package org.mewx.wenku8_flutter
 
 import android.content.Intent
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
 import java.io.File
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.embedding.engine.plugins.FlutterPlugin
@@ -11,6 +13,8 @@ import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.PluginRegistry
 
 /** Source builds attach local platform capabilities only. */
+internal const val WEBSITE_LOGIN_REQUEST = 4311
+
 internal fun attachWenkuEnginePlugins(engine: FlutterEngine) {
     if (!engine.plugins.has(ReadingWidgetsPlugin::class.java)) engine.plugins.add(ReadingWidgetsPlugin())
     if (!engine.plugins.has(ListeningEnhancementPlugin::class.java)) engine.plugins.add(ListeningEnhancementPlugin())
@@ -36,6 +40,8 @@ class WenkuHostPlugin : FlutterPlugin, ActivityAware, PluginRegistry.ActivityRes
     private var bookOpens: BookOpenRequests? = null
     private var documentsChannel: MethodChannel? = null
     private var activityBinding: ActivityPluginBinding? = null
+    private var api: Wenku8Bridge? = null
+    private var apiChannel: MethodChannel? = null
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         val resolver = binding.applicationContext.contentResolver
@@ -43,6 +49,11 @@ class WenkuHostPlugin : FlutterPlugin, ActivityAware, PluginRegistry.ActivityRes
             copySelectedBookDocument(resolver, uri, target, max)
         }
         bookOpens = BookOpenRequests(binding.applicationContext)
+        val main = Handler(Looper.getMainLooper())
+        api = Wenku8Bridge(binding.applicationContext) { main.post(it) }
+        apiChannel = MethodChannel(binding.binaryMessenger, "org.mewx.wenku8/legacy_api").also {
+            it.setMethodCallHandler(api)
+        }
         toolsChannel = MethodChannel(binding.binaryMessenger, "org.mewx.wenku8/local_tools").also {
             it.setMethodCallHandler { call, result ->
                 val attached = tools
@@ -63,11 +74,16 @@ class WenkuHostPlugin : FlutterPlugin, ActivityAware, PluginRegistry.ActivityRes
         bookImports?.close()
         bookImports = null
         bookOpens = null
+        apiChannel?.setMethodCallHandler(null)
+        apiChannel = null
+        api?.close()
+        api = null
         toolsChannel?.setMethodCallHandler(null)
         documentsChannel?.setMethodCallHandler(null)
     }
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {
         activityBinding = binding
+        api?.activityForBrowser = binding.activity
         tools = LocalTools(binding.activity)
         documents = BookDocuments(binding.activity, checkNotNull(bookImports), checkNotNull(bookOpens))
         binding.addActivityResultListener(this)
@@ -77,6 +93,7 @@ class WenkuHostPlugin : FlutterPlugin, ActivityAware, PluginRegistry.ActivityRes
         documentsChannel?.invokeMethod("bookOpenAvailable", null)
     }
     private fun detachActivity() {
+        api?.activityForBrowser = null
         activityBinding?.removeActivityResultListener(this)
         activityBinding?.removeRequestPermissionsResultListener(this)
         activityBinding?.removeOnNewIntentListener(this)
@@ -95,9 +112,16 @@ class WenkuHostPlugin : FlutterPlugin, ActivityAware, PluginRegistry.ActivityRes
         documentsChannel?.invokeMethod("bookOpenAvailable", null)
         return true
     }
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?): Boolean =
-        (tools?.onActivityResult(requestCode, resultCode, data) ?: false) ||
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?): Boolean {
+        if (requestCode == WEBSITE_LOGIN_REQUEST) {
+            api?.deliverBrowserSession(
+                if (resultCode == android.app.Activity.RESULT_OK) data?.getStringExtra("cookies") else null,
+            )
+            return true
+        }
+        return (tools?.onActivityResult(requestCode, resultCode, data) ?: false) ||
             (documents?.onActivityResult(requestCode, resultCode, data) ?: false)
+    }
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray): Boolean =
         documents?.onRequestPermissionsResult(requestCode) ?: false
 }

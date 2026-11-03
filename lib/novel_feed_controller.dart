@@ -9,7 +9,8 @@ import 'book_search.dart';
 import 'tag_catalogue.dart';
 import 'blocked_tags.dart';
 import 'publication_catalog.dart';
-import 'web_publication_catalog.dart' show PublicationConnectionRequired;
+import 'web_publication_catalog.dart'
+    show PublicationConnectionRequired, WebPublicationCatalog;
 
 /// Owns page cursors, stale-result isolation and explicit recovery. A failed
 /// page never advances the cursor or loops automatically against the service.
@@ -64,6 +65,7 @@ class NovelFeedController extends ChangeNotifier {
   NovelSort sort = NovelSort.lastUpdate;
   PublicationLibrary? _publication;
   PublicationCatalog? _publicationCatalog;
+  WebPublicationCatalog? _rankingCatalog;
 
   /// An explicit publication category replaces, rather than combines with,
   /// ranking and tag requests because its service has its own ordered cursor.
@@ -207,6 +209,9 @@ class NovelFeedController extends ChangeNotifier {
       ? Future.value()
       : _load(replace: page == 0 || refreshFailed, force: true);
 
+  /// Discovery boards are ranked by the official site, not by the relay API:
+  /// `novellist` takes a category id in `sort`, so passing a board name there
+  /// returns an empty list with no page count.
   Future<void> selectSort(NovelSort value) async {
     if (sort == value && tags.isEmpty && _publication == null) return;
     sort = value;
@@ -215,6 +220,11 @@ class NovelFeedController extends ChangeNotifier {
     _publicationCatalog = null;
     _reset();
     await _load(replace: true);
+  }
+
+  /// Share the signed-in website session with the ranking boards.
+  void attachRankingCatalog(WebPublicationCatalog catalog) {
+    _rankingCatalog = catalog;
   }
 
   Future<void> selectTags(Iterable<String> values) async {
@@ -347,6 +357,7 @@ class NovelFeedController extends ChangeNotifier {
     final requestedSort = sort;
     final requestedPublication = _publication;
     final publicationCatalog = _publicationCatalog;
+    final rankingCatalog = _rankingCatalog;
     final filteringTags = !search && tags.isNotEmpty;
     final requestedQuery = filteringTags ? tags.join(' ') : query;
     final requestedField = filteringTags ? BookSearchField.tags : searchField;
@@ -399,6 +410,14 @@ class NovelFeedController extends ChangeNotifier {
             requestedPublication != null && publicationCatalog != null
             ? await publicationCatalog.browsePublication(
                 requestedPublication.id,
+                page: requestedPage,
+                refresh: force,
+              )
+            : rankingCatalog != null &&
+                  requestedQuery.isEmpty &&
+                  !filteringTags
+            ? await rankingCatalog.browseRanking(
+                requestedSort,
                 page: requestedPage,
                 refresh: force,
               )

@@ -20,6 +20,8 @@ android/app/src/main/AndroidManifest.xml
 android/app/src/main/cpp/CMakeLists.txt
 android/app/src/main/cpp/mobi_export.c
 android/app/src/main/cpp/mobi_jni.c
+android/app/src/main/kotlin/org/mewx/wenku8_flutter/AccountSessionStore.kt
+android/app/src/main/kotlin/org/mewx/wenku8_flutter/ApiSessionCookies.kt
 android/app/src/main/kotlin/org/mewx/wenku8_flutter/AppHapticsPlugin.kt
 android/app/src/main/kotlin/org/mewx/wenku8_flutter/AppUpdatePlugin.kt
 android/app/src/main/kotlin/org/mewx/wenku8_flutter/BookArchiveImport.kt
@@ -45,6 +47,7 @@ android/app/src/main/kotlin/org/mewx/wenku8_flutter/CustomSpeechConfigPlugin.kt
 android/app/src/main/kotlin/org/mewx/wenku8_flutter/FrameRatePlugin.kt
 android/app/src/main/kotlin/org/mewx/wenku8_flutter/GalleryImageCommit.kt
 android/app/src/main/kotlin/org/mewx/wenku8_flutter/HighRefreshRateController.kt
+android/app/src/main/kotlin/org/mewx/wenku8_flutter/IllustrationUrlPolicy.kt
 android/app/src/main/kotlin/org/mewx/wenku8_flutter/LanDiscoveryPlugin.kt
 android/app/src/main/kotlin/org/mewx/wenku8_flutter/LanReadingConfigPlugin.kt
 android/app/src/main/kotlin/org/mewx/wenku8_flutter/LegacyRecordFolder.kt
@@ -73,7 +76,13 @@ android/app/src/main/kotlin/org/mewx/wenku8_flutter/RefreshRatePolicy.kt
 android/app/src/main/kotlin/org/mewx/wenku8_flutter/SpeechLocalePolicy.kt
 android/app/src/main/kotlin/org/mewx/wenku8_flutter/SystemSpeechPlugin.kt
 android/app/src/main/kotlin/org/mewx/wenku8_flutter/UpdatePackages.kt
+android/app/src/main/kotlin/org/mewx/wenku8_flutter/WebsiteBrowser.kt
+android/app/src/main/kotlin/org/mewx/wenku8_flutter/WebsiteLoginActivity.kt
+android/app/src/main/kotlin/org/mewx/wenku8_flutter/Wenku8Bridge.kt
 android/app/src/main/kotlin/org/mewx/wenku8_flutter/WenkuApplication.kt
+android/app/src/main/kotlin/org/mewx/wenku8_flutter/WenkuPublicGateway.kt
+android/app/src/main/kotlin/org/mewx/wenku8_flutter/WenkuPublicationSession.kt
+android/app/src/main/kotlin/org/mewx/wenku8_flutter/WenkuWebCatalogClient.kt
 android/app/src/main/res/drawable-night/launch_background.xml
 android/app/src/main/res/drawable-nodpi/ic_archive_mark.png
 android/app/src/main/res/drawable-nodpi/reading_widget_art_archive_117.webp
@@ -163,6 +172,7 @@ android/app/src/main/res/values/reading_widgets.xml
 android/app/src/main/res/values/styles.xml
 android/app/src/main/res/xml/backup_rules.xml
 android/app/src/main/res/xml/data_extraction_rules.xml
+android/app/src/main/res/xml/network_security_config.xml
 android/app/src/main/res/xml/reading_widget_large.xml
 android/app/src/main/res/xml/reading_widget_medium.xml
 android/app/src/main/res/xml/reading_widget_small.xml

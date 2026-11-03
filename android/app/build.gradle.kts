@@ -18,6 +18,10 @@ android {
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
+    // The private API runtime arrives as a prebuilt jniLibs entry; AGP otherwise
+    // strips its symbols even when jniLibs contains the original file.
+    packaging.jniLibs.keepDebugSymbols.add("**/libcpp.so")
+
     compileOptions {
         isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17

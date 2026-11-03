@@ -34,9 +34,9 @@ import 'updates/ios_update_platform.dart';
 import 'updates/harmony_update_platform.dart';
 import 'updates/update_page.dart';
 import 'wenku_account.dart';
+import 'web_publication_catalog.dart';
 import 'wenku_features.dart';
 import 'wenku_shelf_sync.dart';
-import 'publication_catalog.dart';
 import 'lan_reading_sync.dart';
 import 'lan_handoff_widgets.dart';
 import 'reader_handoff_navigation.dart';
@@ -82,7 +82,16 @@ Future<void> main() async {
   final WenkuAccount? account = LocalPlatform.fileActions
       ? WenkuAccount()
       : null;
-  const remote = LegacyWenkuRepository();
+  final remote = LegacyWenkuRepository(
+    publicationRequest: account?.readPublication,
+    publicationSessionKey: account == null
+        ? null
+        : () => (
+            account.sessionRevision,
+            account.publicationRevision,
+            account.authenticated,
+          ),
+  );
   final repository = LocalPlatform.fileActions
       ? await openApplicationLibrary(remote: remote, network: network)
       : const DemoNovelRepository();
@@ -96,9 +105,18 @@ Future<void> main() async {
   final features = account != null
       ? WenkuFeatures(
           account: account,
-          // The authenticated novellist response already contains book metadata.
-          // Reuse its adapter, pagination and the existing account session.
-          publications: remote as PublicationCatalog,
+          // Categories and discovery boards share one signed-in identity: the
+          // relay answers categories as XML, while the ranking boards exist only
+          // on the official site.
+          publications: WebPublicationCatalog(
+            categories: remote,
+            books: remote,
+            sessionKey: () => (
+              account.sessionRevision,
+              account.publicationRevision,
+              account.authenticated,
+            ),
+          ),
           shelfSync: WenkuShelfSync(
             account: account,
             library: state,

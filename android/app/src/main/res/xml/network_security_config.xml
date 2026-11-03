@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The legacy site still redirects to plain http on the two mirrors and the
+     browser check needs those hops to complete. Everything else stays https. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">wenku8.net</domain>
+        <domain includeSubdomains="true">wenku8.cc</domain>
+    </domain-config>
+</network-security-config>

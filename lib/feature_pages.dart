@@ -8,6 +8,7 @@ import 'app_interactions.dart';
 import 'app_ui.dart';
 import 'catalog.dart';
 import 'library_state.dart';
+import 'legacy_transport.dart' show WebsiteStatus;
 import 'library_workspace.dart';
 import 'novel_feed_controller.dart';
 import 'pages.dart' show DiscoverPage, openDetail;
@@ -245,6 +246,92 @@ class _WenkuAccountPageState extends State<WenkuAccountPage> {
     if (confirmed) await _run(widget.account.logout, '已退出账号');
   }
 
+  /// The original app offers the two mirrors as a short menu, not a segmented
+  /// control; the same anchored menu is reused here.
+  Future<void> _chooseRoute() async {
+    final account = widget.account;
+    if (account.busy) return;
+    final host = await showGlassMenu<String>(
+      context: context,
+      reduceMotion: widget.state.reduceMotion,
+      builder: (menu) => Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final (index, value) in const [
+            WebsiteStatus.net,
+            WebsiteStatus.cc,
+          ].indexed)
+            GlassMenuItem(
+              order: index,
+              label: 'www.wenku8.$value',
+              selected: account.websiteHost == value,
+              onPressed: () => Navigator.pop(menu, value),
+            ),
+        ],
+      ),
+    );
+    if (!mounted || host == null || host == account.websiteHost) return;
+    await _run(() => account.selectWebsite(host), '已切换到 www.wenku8.$host');
+  }
+
+  /// The official website session is separate from the API login: ranking and
+  /// category pages are read from the site itself, so its own login matters.
+  Widget _websiteSection(
+    BuildContext context,
+    WenkuAccount account,
+  ) => ContentPanel(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const ArchiveCode('WEBSITE / SESSION'),
+        const SizedBox(height: 10),
+        FeatureEntry(
+          key: const ValueKey('account-route-menu'),
+          title: '官网线路',
+          subtitle:
+              'www.wenku8.${account.websiteHost} · ${account.websiteSignedIn ? '官网已登录' : '官网未登录'}',
+          icon: CupertinoIcons.arrow_branch,
+          onTap: account.busy ? null : _chooseRoute,
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            GlassTextButton(
+              key: const ValueKey('account-browser-login'),
+              onPressed: account.busy
+                  ? null
+                  : () => _run(account.connectWebsiteInBrowser, '官网已连接'),
+              child: AppText(account.websiteSignedIn ? '重新登录官网' : '登录官网'),
+            ),
+            GlassTextButton(
+              key: const ValueKey('account-route-check'),
+              onPressed: account.busy
+                  ? null
+                  : () => _run(account.testWebsite, '当前线路可用'),
+              child: const AppText('测试连接'),
+            ),
+            const SizedBox(width: 2),
+            AppText(
+              account.websiteProbe == null
+                  ? '尚未测试'
+                  : account.websiteProbe!.ok
+                  ? '${account.websiteProbe!.millis} ms · 可用'
+                  : '连接失败',
+              style: TextStyle(
+                fontSize: 13,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+
   @override
   Widget build(BuildContext context) => AutofillGroup(
     // Leaving/cancelling the form must not offer to save unverified input.
@@ -282,6 +369,8 @@ class _WenkuAccountPageState extends State<WenkuAccountPage> {
                       : '使用原版文库账号。未登录时仍可搜索、收藏到本机和离线阅读。',
                 ),
                 const SizedBox(height: 24),
+                _websiteSection(context, account),
+                const SizedBox(height: 20),
                 if (!account.authenticated)
                   ContentPanel(
                     child: Column(
@@ -380,22 +469,33 @@ class _WenkuAccountPageState extends State<WenkuAccountPage> {
                           const SizedBox(height: 12),
                           Wrap(
                             spacing: 12,
+                            runSpacing: 12,
                             children: [
                               GlassTextButton(
-                                key: const ValueKey('account-sign'),
-                                onPressed: account.busy || account.signedToday
-                                    ? null
-                                    : () => _run(account.signIn, '今日签到已完成'),
-                                child: AppText(
-                                  account.signedToday ? '今日已签到' : '每日签到',
-                                ),
-                              ),
-                              GlassTextButton(
+                                key: const ValueKey('account-refresh'),
                                 onPressed: account.busy
                                     ? null
                                     : () =>
                                           _run(account.refreshProfile, '账号已更新'),
                                 child: const AppText('刷新资料'),
+                              ),
+                              GlassTextButton(
+                                key: const ValueKey('account-keep-alive'),
+                                onPressed: account.busy
+                                    ? null
+                                    : () => _run(
+                                        () => account.setWebsiteKeepAlive(
+                                          !account.websiteKeepAlive,
+                                        ),
+                                        account.websiteKeepAlive
+                                            ? '已关闭保持登录'
+                                            : '已开启保持登录',
+                                      ),
+                                child: AppText(
+                                  account.websiteKeepAlive
+                                      ? '保持登录 · 开'
+                                      : '保持登录 · 关',
+                                ),
                               ),
                             ],
                           ),

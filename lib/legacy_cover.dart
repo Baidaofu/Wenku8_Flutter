@@ -1,11 +1,14 @@
 import 'dart:async';
 
-import 'dart:typed_data';
-import 'online_component.dart';
+import 'package:flutter/services.dart';
 
-/// Bounded cover cache. Source previews use local seeds only.
+/// Reuses the original Android cover API, with bounded encoded memory and
+/// stable cached futures. Eviction leaves the native disk cache untouched.
 abstract final class LegacyCover {
-  static final _cache = LegacyCoverCache(request: (_) => unavailableOnline());
+  static const _channel = MethodChannel('org.mewx.wenku8/legacy_api');
+  static final _cache = LegacyCoverCache(
+    request: (aid) => _channel.invokeMethod<Uint8List>('cover', {'aid': aid}),
+  );
   static Uint8List? peek(int aid, {String? url}) => _cache.peek(aid);
   static Future<Uint8List> bytes(int aid, {String? url}) => _cache.load(aid);
 
