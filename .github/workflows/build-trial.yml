@@ -2,7 +2,7 @@ name: Build trial (APK arm64 + unsigned IPA)
 
 on:
   push:
-    branches: ['master']
+    branches: ['master', 'trial']
   workflow_dispatch:
 
 permissions:
@@ -30,8 +30,27 @@ jobs:
       - name: Resolve dependencies
         run: flutter pub get
 
+      # Build failures must be readable without admin rights on the repo, so the
+      # full output is echoed into the step log and also uploaded as an artifact.
       - name: Build arm64-v8a release APK
-        run: flutter build apk --release --target-platform android-arm64
+        run: |
+          set -o pipefail
+          flutter build apk --release --target-platform android-arm64 \
+            > build.log 2>&1 || true
+          echo '========== build output =========='
+          cat build.log
+          echo '========== errors only =========='
+          grep -nE 'Error:|error:|FAILURE|What went wrong|Unresolved|not found|No file or variants' build.log || echo '(no error lines matched)'
+          echo '=================================='
+          test -f build/app/outputs/flutter-apk/app-release.apk
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trial-apk-build-log
+          path: build.log
+          if-no-files-found: warn
 
       - uses: actions/upload-artifact@v4
         with:
@@ -60,12 +79,26 @@ jobs:
 
       - name: Build unsigned IPA
         run: |
-          set -euo pipefail
-          flutter build ios --release --no-codesign
+          set -o pipefail
+          flutter build ios --release --no-codesign > build.log 2>&1 || true
+          echo '========== build output =========='
+          cat build.log
+          echo '========== errors only =========='
+          grep -nE 'Error:|error:|FAILURE|What went wrong|not found|No such file' build.log || echo '(no error lines matched)'
+          echo '=================================='
+          test -d build/ios/iphoneos/Runner.app
           mkdir -p Payload
           cp -R build/ios/iphoneos/Runner.app Payload/
           zip -qry Wenku8-unsigned.ipa Payload
           ls -lh Wenku8-unsigned.ipa
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trial-ipa-build-log
+          path: build.log
+          if-no-files-found: warn
 
       - uses: actions/upload-artifact@v4
         with:
