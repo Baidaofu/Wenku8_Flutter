@@ -5,8 +5,6 @@ on:
     branches: ['master']
     paths: ['site/**', 'docs/images/**', 'tools/build_project_site.py', 'tools/fetch_activity_snapshot.py', '.github/workflows/project-pages.yml']
   workflow_dispatch:
-  schedule:
-    - cron: '17 * * * *'
 
 permissions:
   contents: read
